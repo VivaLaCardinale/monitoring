@@ -1,0 +1,78 @@
+groups:
+  - name: cpu_utilization_alerts
+    rules:
+      - alert: HostHighCpuLoadWarning
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+          tier: os
+        annotations:
+          summary: "Высокая загрузка CPU на хосте {{ $labels.instance }}"
+          description: "Использование CPU составляет {{ printf \"%.2f\" $value }}% в течение последних 5 минут."
+
+      - alert: HostHighCpuLoadCritical
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 95
+        for: 5m
+        labels:
+          severity: critical
+          tier: os
+        annotations:
+          summary: "Критическая загрузка CPU на хосте {{ $labels.instance }}"
+          description: "Использование CPU критически высокое: {{ printf \"%.2f\" $value }}%!"
+
+  - name: cpu_load_average_alerts
+    rules:
+      - alert: HostLoadAverageHigh
+        expr: node_load5 / on(instance) count by (instance) (node_cpu_seconds_total{mode="idle"}) > 1.5
+        for: 10m
+        labels:
+          severity: warning
+          tier: os
+        annotations:
+          summary: "Высокий Load Average на {{ $labels.instance }}"
+          description: "Относительный LA за 5 минут превышает норму в 1.5 раза (текущее отношение LA к ядрам: {{ printf \"%.2f\" $value }})."
+
+  - name: memory_alerts
+    rules:
+      - alert: HostMemoryAvailableLow
+        expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+          tier: os
+        annotations:
+          summary: "Заканчивается оперативная память на {{ $labels.instance }}"
+          description: "Доступно всего {{ printf \"%.2f\" $value }}% оперативной памяти от общего объема."
+
+      - alert: HostMemoryAvailableCritical
+        expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 5
+        for: 2m
+        labels:
+          severity: critical
+          tier: os
+        annotations:
+          summary: "КРИТИЧЕСКИЙ уровень RAM на {{ $labels.instance }}"
+          description: "Осталось менее {{ printf \"%.2f\" $value }}% оперативной памяти! Риск срабатывания OOM Killer."
+
+  - name: filesystem_alerts
+    rules:
+      - alert: DiskSpaceRunningLow
+        expr: (node_filesystem_free_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+          tier: os
+        annotations:
+          summary: "Мало места на диске '/' хоста {{ $labels.instance }}"
+          description: "Свободного пространства в корневом разделе осталось всего {{ printf \"%.2f\" $value }}%."
+
+      - alert: DiskSpaceCritical
+        expr: (node_filesystem_free_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 5
+        for: 1m
+        labels:
+          severity: critical
+          tier: os
+        annotations:
+          summary: "КРИТИЧЕСКИ мало места на диске '/' хоста {{ $labels.instance }}"
+          description: "Свободно всего {{ printf \"%.2f\" $value }}%! Срочно требуется очистка диска."
